@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script src="js/jquery-1.11.1.min.js"></script>
+</head>
+<body style="border:10px solid red;">
+<br>
+<button onclick="stage.curScene.scaleX*=1.05;stage.curScene.scaleY*=1.05">放大</button>
+<button onclick="stage.curScene.scaleX*=0.95;stage.curScene.scaleY*=0.95">缩小</button>
+
+<br>
+aaaaaaaaaaaaaaa
+<canvas id="canvas" width="600px" height="600px" style="border:4px solid black;"></canvas>
+<script>
+
+function Stage(canvas){
+    this.canvas = canvas;
+    this.context =canvas.getContext("2d");
+    var me = this;
+    this.curScene = null;
+
+    //屏蔽canvas的右键菜单
+    canvas.oncontextmenu = function(ev){
+        ev = ev || event;
+        ev.returnValue = false;
+    }
+
+    canvas.onmousedown = function(ev){
+        ev = ev || event;
+        var px = (ev.clientX -canvas.offsetLeft+document.body.scrollLeft - canvas.width / 2) / me.curScene.scaleX + canvas.width / 2 - me.curScene.translateX;
+        var py = (ev.clientY -canvas.offsetTop+document.body.scrollTop - canvas.height / 2) / me.curScene.scaleY + canvas.height / 2 - me.curScene.translateY;
+        if(me.curScene.onClick){
+            me.curScene.onClick({
+                event:ev,
+                pointX:px,
+                pointY:py
+            });
+        }
+
+        //var t = new TextNode(px+","+py);
+        //t.setLocation(px,py);
+        //me.curScene.add(t);
+
+        me.curScene.currentElement = null;
+
+        me.curScene.childs.forEach(function(ele){
+            if(ele.elementType == "node" || ele.elementType=="container") {
+                if (ele.inBound(px, py)) {
+                    ele.selected = true;
+                    me.curScene.currentElement = ele;
+                    ele.pointX = px - ele.x;
+                    ele.pointY = py - ele.y;
+                } else {
+                    if(!ev.ctrlKey){
+                        ele.selected = false;
+                    }
+                }
+            }
+        });
+        if(me.curScene.currentElement){
+            me.canvas.style.cursor = "aa";
+            var curEle = me.curScene.currentElement;
+            if(curEle.onClick){
+                curEle.onClick({
+                    event:ev,
+                    pointX:curEle.pointX,
+                    pointY:curEle.pointY
+                })
+            }
+        }else{
+         //   me.canvas.style.cursor = "pointer";
+        }
+
+        canvas.onmousemove = function(ev){
+            ev = ev || event;
+            //var px2 = (ev.clientX -canvas.offsetLeft - canvas.width / 2) / me.curScene.scaleX + canvas.width / 2 - me.curScene.translateX;
+            //var py2 = (ev.clientY -canvas.offsetTop - canvas.height / 2) / me.curScene.scaleY + canvas.height / 2 - me.curScene.translateY;
+            var px2 = (ev.clientX -canvas.offsetLeft+document.body.scrollLeft - canvas.width / 2) / me.curScene.scaleX + canvas.width / 2 - me.curScene.translateX;
+            var py2 = (ev.clientY -canvas.offsetTop+document.body.scrollTop - canvas.height / 2) / me.curScene.scaleY + canvas.height / 2 - me.curScene.translateY;
+            var curEle = me.curScene.currentElement;
+
+            if(curEle){
+                var dx = px2-curEle.pointX;
+                var dy = py2-curEle.pointY;
+                if(curEle.childs){
+                    curEle.childs.forEach(function(ele){
+                        ele.x+=dx-curEle.x;
+                        ele.y+=dy-curEle.y;
+                    });
+                }
+                curEle.x = dx;
+                curEle.y = dy;
+
+
+            }else{
+                me.curScene.translateX +=px2-px;
+                me.curScene.translateY +=py2-py;
+            }
+        }
+        document.onmouseup = function(){
+            canvas.onmousemove = null;
+            canvas.onmouseup = null;
+        }
+    };
+    canvas.onmousewheel = function(ev){
+        var ev = ev || window.event;
+        if(ev.deltaY>0){
+            me.curScene.scaleY *= me.curScene.wheelZoom;
+            me.curScene.scaleX *= me.curScene.wheelZoom;
+        }else{
+            me.curScene.scaleY /= me.curScene.wheelZoom;
+            me.curScene.scaleX /= me.curScene.wheelZoom;
+        }
+        //ev.preventDefault();
+    }
+
+    document.onmousemove = function(ev){
+        ev = ev || event;
+        me.curScene.focus = null;
+        var px = (ev.clientX -canvas.offsetLeft+document.body.scrollLeft - canvas.width / 2) / me.curScene.scaleX + canvas.width / 2 - me.curScene.translateX;
+        var py = (ev.clientY -canvas.offsetTop+document.body.scrollTop - canvas.height / 2) / me.curScene.scaleY + canvas.height / 2 - me.curScene.translateY;
+
+
+        me.curScene.childs.forEach(function(ele){
+            if(ele.elementType == "node"){
+                if(ele.inBound(px,py)){
+                    me.curScene.focus = ele;
+                }
+            }
+        });
+    }
+
+
+    void function(){
+        if(me.curScene){
+          //  me.canvas.height = parseInt(me.canvas.style.height)/me.curScene.scaleX;
+           // me.canvas.width = parseInt(me.canvas.style.width)/me.curScene.scaleY;
+            me.curScene.paint(me.context);
+        }
+        setTimeout(arguments.callee,10);
+    }();
+}
+function Scene(stage){
+    stage.curScene = this;
+    this.stage = stage;
+    this.childs = [];
+    this.scaleX = 1;
+    this.scaleY = 1;
+    this.translateX = 0;
+    this.translateY = 0;
+    this.bgStyle = "gray";
+    this.wheelZoom = 0.95;
+    this.onClick = function(params){
+        console.log(params);
+    }
+    this.dbClick = function(params){
+        console.log(params);
+    }
+
+    this.add = function(ele){
+        if(this.childs.indexOf(ele)==-1){
+            this.childs.push(ele);
+        }
+        ele.scene = this;
+
+        this.childs.sort(function(a,b){
+            function ab(ele){
+                switch(ele.elementType){
+                    case "container":
+                        return 1;
+                    case "node":
+                    case "text":
+                        return 2;
+                    case "link":
+                        return 3;
+
+                }
+            }
+            return ab(a)>ab(b);
+        });
+
+    }
+    this.paint = function(ctx){
+        var canvas = this.stage.canvas;
+        this.childs.forEach(function(ele){
+            if(ele.elementType == "container"){
+                ele.childs.forEach(function(node){
+                    if(node.x<ele.x){
+                        node.x = ele.x;
+                    }else if(node.x+node.width>ele.x+ele.width){
+                        node.x = ele.x+ele.width-node.width;
+                    }
+                    if(node.y<ele.y){
+                        node.y = ele.y;
+                    }
+                    else if(node.y+node.height>ele.y+ele.height){
+                        node.y = ele.y+ele.height-node.height;
+                    }
+                });
+            }
+        });
+
+
+        ctx.save();
+
+        //清除背景
+        ctx.save();
+        ctx.fillStyle = this.bgStyle;
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.restore();
+
+        ctx.translate(this.translateX,this.translateY);
+
+        ctx.translate(canvas.width/2-this.translateX,canvas.height/2-this.translateY);
+        ctx.scale(this.scaleX,this.scaleY);
+        ctx.fillStyle = "black";
+        var wh = 10;
+        ctx.fillRect(-wh/2,-wh/2,wh,wh);
+
+        ctx.translate(-canvas.width/2+this.translateX,-canvas.height/2+this.translateY);
+
+        this.childs.forEach(function(ele) {
+            if (ele.elementType == "node") {
+                ctx.save();
+                ctx.translate(ele.x, ele.y);
+                ele.paint(ctx);
+                ctx.restore();
+            } else {
+                ele.paint(ctx);
+            }
+        });
+        ctx.restore();
+
+    //    var img = new Image();
+  //      img.src = "fhq.png";
+//        ctx.drawImage(img,100,100,200,200);
+    }
+}
+function Node(text){
+    this.elementType = "node";
+    this.scene = null;
+    this.text = text;
+    this.x = 0;
+    this.y = 0;
+    this.width = 50;
+    this.height = 50;
+    this.fillStyle ="rgba(0,0,255,0.2)";
+    this.fontStyle = "black";
+    this.font = "10px 微软雅黑";
+    this.borderWidth = 10;
+    this.image = null;
+    this.onClick = function(params){
+        console.log(params);
+
+    }
+    this.onDbClick = function(params){
+
+    }
+    this.onFocus = function(params){
+
+    }
+
+    this.inBound = function(pointX,pointY){
+        return pointX>=this.x && pointX<=this.x+this.width && pointY>=this.y&&pointY<=this.y+this.height;
+    };
+    this.setImage = function(url){
+        var img = new Image();
+        img.src = url;
+        this.image = img;
+    }
+    this.setLocation = function(x,y){
+        this.x = x;
+        this.y = y;
+    }
+    this.setBound = function(x,y,width,height){
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
+    }
+    this.paint = function(ctx){
+        ctx.save();
+        //画外框
+        this.paintBorder(ctx);
+        //画内容
+        if(this.image){
+            ctx.drawImage(this.image,0,0,this.width,this.height);
+        }else{
+            ctx.fillStyle = this.fillStyle;
+            ctx.fillRect(0,0,this.width,this.height);
+        }
+        //画文本
+        this.paintText(ctx);
+        ctx.restore();
+    }
+    this.paintBorder = function(ctx){
+        var alp = 0;
+        if(this.selected){
+            alp+=0.5;
+        }
+        if(this.scene.focus == this){
+            alp += 0.5;
+        }
+        if(alp){
+            ctx.fillStyle = "rgba(200,200,200,"+alp+")";
+            ctx.fillRect(-this.borderWidth / 2, -this.borderWidth / 2, this.width + this.borderWidth, this.height + this.borderWidth);
+        }
+    }
+    this.paintText = function(ctx){
+        if(this.text) {
+            ctx.save();
+            ctx.translate(this.width / 2, this.height + this.borderWidth / 2);
+            ctx.fillStyle = this.fontStyle;
+            ctx.textAlign = "center";
+            ctx.font = this.font;
+            ctx.textBaseline = "top"
+            ctx.fillText(this.text, 0, 0);
+            ctx.restore();
+        }
+    }
+
+}
+function Link(nodeA,nodeZ){
+    this.elementType = "link";
+    this.nodeA = nodeA;
+    this.nodeZ = nodeZ;
+    this.stokeStyle = "red";
+    this.textStyle = "blue";
+    this.lineWidth = 1;
+    this.scene = null;
+    this.text = null;
+    this.arrowsRadius = 10;
+    this.paint = function(){
+        var ctx = this.scene.stage.context;
+        var canvas = this.scene.stage.canvas;
+        var sPort ={
+            x:this.nodeA.x+this.nodeA.width/2,
+            y:this.nodeA.y+this.nodeA.height/2
+        };
+        var dPort = {
+            x:this.nodeZ.x+this.nodeZ.width/2,
+            y:this.nodeZ.y+this.nodeZ.height/2
+        };
+
+        ctx.save();
+
+        //画线
+        ctx.beginPath();
+        ctx.moveTo(sPort.x,sPort.y);
+        ctx.lineTo(dPort.x,dPort.y);
+        ctx.lineWidth = this.lineWidth;
+        ctx.strokeStyle = "red";
+        ctx.stroke();
+        ctx.closePath();
+
+
+        //画箭头
+        if(this.arrowsRadius) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.strokeStyle = this.strokeStyle;
+            ctx.lineWidth = 4;
+            ctx.translate(dPort.x, dPort.y);
+            ctx.rotate(Math.atan2(dPort.y - sPort.y, dPort.x - sPort.x));
+            ctx.moveTo(-this.arrowsRadius, this.arrowsRadius / 2);
+            ctx.lineTo(0, 0);
+            ctx.lineTo(-this.arrowsRadius, -this.arrowsRadius / 2);
+            ctx.stroke();
+            ctx.closePath();
+            ctx.restore();
+        }
+//画文本
+        if(this.text) {
+            var lx = (sPort.x + dPort.x) / 2;
+            var ly = (sPort.y + dPort.y) / 2;
+            ctx.translate(lx,ly);
+            ctx.rotate(Math.atan2(dPort.y-sPort.y,dPort.x-sPort.x));
+            ctx.textAlign = "center";
+            ctx.fillStyle = this.textStyle;
+            ctx.fillText(this.text,0,0);
+        }
+
+        ctx.restore();
+    }
+}
+
+function TextNode(text){
+    this.elementType = "text";
+    this.text = text;
+    this.x = null;
+    this.y = null;
+    this.fillStyle = "white";
+    this.scene = null;
+    this.position = "absolute";
+    this.setLocation = function(x,y){
+        this.x = x;
+        this.y = y;
+    }
+    this.paint = function(){
+        var ctx = this.scene.stage.context;
+        var canvas = this.scene.stage.canvas;
+
+        ctx.save();
+        ctx.fillStyle = this.fillStyle;
+        ctx.textBaseline = "top"
+
+        var x = this.x;
+        var y = this.y;
+        if(this.position == "flex"){
+            x = (this.x - canvas.width / 2) / this.scene.scaleX + canvas.width / 2 - this.scene.translateX;
+            y = (this.y - canvas.height / 2) / this.scene.scaleY + canvas.height / 2 - this.scene.translateY;
+        }
+
+        ctx.fillText(this.text,x,y);
+        ctx.restore();
+    }
+}
+
+function Container(){
+    this.elementType = "container";
+    this.x = null;
+    this.y = null;
+    this.width = null;
+    this.height = null;
+    this.childs = [];
+    this.scene = null;
+    this.bgColor ="rgba(10,10,100,0.6)";
+    this.add = function(ele){
+        this.childs.push(ele);
+    }
+    this.setBound = function(x,y,width,height){
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
+    }
+    this.paint = function(){
+        var ctx = this.scene.stage.context;
+        ctx.save();
+        ctx.fillStyle = this.bgColor;
+        ctx.fillRect(this.x,this.y,this.width,this.height);
+        ctx.restore();
+    }
+    this.inBound = function(pointX,pointY){
+        return pointX>=this.x && pointX<=this.x+this.width && pointY>=this.y&&pointY<=this.y+this.height;
+    }
+}
+
+
+var canvas = document.getElementById("canvas");
+var stage = new Stage(canvas);
+var scene = new Scene(stage);
+var nodeA = new Node("nodeA");
+nodeA.setBound(300,300,30,30);
+nodeA.fillStyle = "blue";
+scene.add(nodeA);
+
+var nodeB = new Node("nodeB");
+nodeB.fillStyle = "green";
+nodeB.setBound(100,400,30,30);
+scene.add(nodeB);
+
+var nodeC = new Node("nodeC");
+nodeC.fillStyle = "rgb(100,100,100)"
+nodeC.setBound(200,100,40,40);
+nodeC.borderWidth = 3;
+scene.add(nodeC);
+
+
+var nodeD = new Node("nodeD");
+nodeD.fillStyle = "blue";
+nodeD.setLocation(400,200);
+nodeD.setImage("fhq.png");
+scene.add(nodeD);
+
+var nodeE =new Node("nodeE");
+nodeE.setLocation(300,300);
+nodeE.setImage("jkj.png");
+scene.add(nodeE);
+
+
+var linkA = new Link(nodeA,nodeB);
+linkA.text = "linkA";
+scene.add(linkA);
+
+
+var linkB = new Link(nodeB,nodeC);
+linkB.text = "linkB";
+scene.add(linkB);
+
+var linkC = new Link(nodeC,nodeA);
+linkC.text = "linkC";
+//scene.add(linkC);
+
+var textA = new TextNode("测试拓扑图");
+textA.setLocation(10,10);
+textA.position = "flex";
+scene.add(textA);
+
+var container = new Container();
+container.setBound(50,50,300,350);
+container.add(nodeA);
+container.add(nodeB);
+scene.add(container);
+
+var c2 = new Container();
+c2.setBound(300,100,200,300);
+c2.add(nodeC);
+c2.bgColor = "green";
+scene.add(c2);
+
+var Ani = {
+    gravity:function(ele,params){
+        return new function Gravity(ele,params){
+            this.v = 0;
+            this.s = 0;
+            var me = this;
+            this.start = function(){
+                clearInterval(ele.gravityTimer);
+                ele.gravityTimer = setInterval(function(){
+                    me.s+=1;
+                    me.v += me.s;
+                    if(params && params.canStop && params.canStop(ele)){
+                        me.stop();
+                    }
+                },100);
+                return this;
+            }
+            this.onStop = function(){
+                console.log("stoped");
+                return this;
+            }
+            this.stop = function(){
+                clearInterval(ele.gravityTimer);
+                if(this.onStop){
+                    this.onStop();
+                }
+                return this;
+            }
+        }(ele,params);
+    }
+}
+
+
+
+
+
+
+
+</script>
+
+
+</body>
+</html>
