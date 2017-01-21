@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>T1</title>
     <script src="js/jquery-1.11.1.min.js"></script>
+    <script src="js/base.js"></script>
 </head>
 <body style="border:10px solid red;">
 <br>
@@ -159,29 +160,30 @@ function Scene(stage){
         console.log(params);
     }
 
-    this.add = function(ele){
-        if(this.childs.indexOf(ele)==-1){
-            this.childs.push(ele);
-        }
-        ele.scene = this;
-
+    this.sort = function(){
         this.childs.sort(function(a,b){
             function ab(ele){
                 switch(ele.elementType){
                     case "container":
                         return 1;
+                    case "link":
+                        return 2;
                     case "node":
                     case "text":
-                        return 2;
-                    case "link":
                         return 3;
-
                 }
             }
-            return ab(a)>ab(b);
+            return ab(a)-ab(b);
         });
-
     }
+    this.add = function(ele){
+        if(this.childs.indexOf(ele)==-1){
+            this.childs.push(ele);
+        }
+        ele.scene = this;
+        this.sort();
+    }
+
     this.paint = function(ctx){
         var canvas = this.stage.canvas;
         this.childs.forEach(function(ele){
@@ -315,7 +317,7 @@ function Node(text){
             ctx.fillStyle = this.fontStyle;
             ctx.textAlign = "center";
             ctx.font = this.font;
-            ctx.textBaseline = "top"
+            ctx.textBaseline = "top";
             ctx.fillText(this.text, 0, 0);
             ctx.restore();
         }
@@ -339,29 +341,68 @@ function Link(nodeA,nodeZ){
             x:this.nodeA.x+this.nodeA.width/2,
             y:this.nodeA.y+this.nodeA.height/2
         };
+
         var dPort = {
             x:this.nodeZ.x+this.nodeZ.width/2,
             y:this.nodeZ.y+this.nodeZ.height/2
-        };
+        }
+
+
+        var xju = dPort.x-sPort.x;
+        var yju = dPort.y-sPort.y;
+
+
+        var westPoint = {//西边
+            x:this.nodeZ.x,
+            y:this.nodeA.y+this.nodeA.height/2+(yju/xju)*(xju-this.nodeZ.width/2)
+        }
+        var eastPoint = {//东边
+            x:this.nodeZ.x+this.nodeZ.width,
+            y:this.nodeA.y+this.nodeA.height/2+(yju/xju)*(xju+this.nodeZ.width/2)
+        }
+
+        var northPoint = {//北边重叠
+            x:this.nodeA.x+this.nodeA.width/2+(xju/yju)*(yju-this.nodeZ.height/2),
+            y:this.nodeZ.y,
+        }
+
+        var sourthPoint = {//南边
+            x:this.nodeA.x+this.nodeA.width/2+(xju/yju)*(yju+this.nodeZ.height/2),
+            y:this.nodeZ.y+this.nodeZ.height
+        }
+
+        var pos = [westPoint,eastPoint,northPoint,sourthPoint];
+        for(var i=0;i<pos.length;i++){
+            var point = pos[i];
+            if(
+                point.x>=this.nodeZ.x
+                && point.x<=this.nodeZ.x+this.nodeZ.width
+                && point.y>=this.nodeZ.y
+                && point.y<=this.nodeZ.y+this.nodeZ.height
+            ){
+                if(Math.abs(dPort.x-this.nodeA.x)+Math.abs(dPort.y-this.nodeA.y)>Math.abs(point.x-this.nodeA.x)+Math.abs(point.y-this.nodeA.y)){
+                    dPort = point;
+                }
+            }
+        }
+
 
         ctx.save();
-
         //画线
         ctx.beginPath();
+        ctx.lineWidth = this.lineWidth;
         ctx.moveTo(sPort.x,sPort.y);
         ctx.lineTo(dPort.x,dPort.y);
-        ctx.lineWidth = this.lineWidth;
-        ctx.strokeStyle = "red";
+        ctx.strokeStyle = this.stokeStyle;
         ctx.stroke();
         ctx.closePath();
-
 
         //画箭头
         if(this.arrowsRadius) {
             ctx.save();
             ctx.beginPath();
             ctx.strokeStyle = this.strokeStyle;
-            ctx.lineWidth = 4;
+            ctx.lineWidth = 3;
             ctx.translate(dPort.x, dPort.y);
             ctx.rotate(Math.atan2(dPort.y - sPort.y, dPort.x - sPort.x));
             ctx.moveTo(-this.arrowsRadius, this.arrowsRadius / 2);
@@ -371,6 +412,9 @@ function Link(nodeA,nodeZ){
             ctx.closePath();
             ctx.restore();
         }
+
+
+
 //画文本
         if(this.text) {
             var lx = (sPort.x + dPort.x) / 2;
@@ -382,7 +426,10 @@ function Link(nodeA,nodeZ){
             ctx.fillText(this.text,0,0);
         }
 
+
         ctx.restore();
+
+
     }
 }
 
@@ -418,8 +465,9 @@ function TextNode(text){
     }
 }
 
-function Container(){
+function Container(text){
     this.elementType = "container";
+    this.text = text;
     this.x = null;
     this.y = null;
     this.width = null;
@@ -427,6 +475,7 @@ function Container(){
     this.childs = [];
     this.scene = null;
     this.bgColor ="rgba(10,10,100,0.6)";
+    this.textStyle = "white",
     this.add = function(ele){
         this.childs.push(ele);
     }
@@ -440,7 +489,13 @@ function Container(){
         var ctx = this.scene.stage.context;
         ctx.save();
         ctx.fillStyle = this.bgColor;
-        ctx.fillRect(this.x,this.y,this.width,this.height);
+        ctx.translate(this.x,this.y);
+        ctx.fillRect(0,0,this.width,this.height);
+        if(this.text){
+            ctx.fillStyle = this.textStyle;
+            ctx.fillText(this.text,0,0);
+        }
+
         ctx.restore();
     }
     this.inBound = function(pointX,pointY){
@@ -453,18 +508,18 @@ var canvas = document.getElementById("canvas");
 var stage = new Stage(canvas);
 var scene = new Scene(stage);
 var nodeA = new Node("nodeA");
-nodeA.setBound(300,300,30,30);
+nodeA.setBound(300.0,300.0,30.0,30.0);
 nodeA.fillStyle = "blue";
 scene.add(nodeA);
 
 var nodeB = new Node("nodeB");
-nodeB.fillStyle = "green";
-nodeB.setBound(100,400,30,30);
+nodeB.fillStyle = "white";
+nodeB.setBound(100.0,100.0,30.0,30.0);
 scene.add(nodeB);
 
 var nodeC = new Node("nodeC");
 nodeC.fillStyle = "rgb(100,100,100)"
-nodeC.setBound(200,100,40,40);
+nodeC.setBound(200.0,200.0,40.0,40.0);
 nodeC.borderWidth = 3;
 scene.add(nodeC);
 
@@ -492,20 +547,20 @@ scene.add(linkB);
 
 var linkC = new Link(nodeC,nodeA);
 linkC.text = "linkC";
-//scene.add(linkC);
+scene.add(linkC);
 
 var textA = new TextNode("测试拓扑图");
 textA.setLocation(10,10);
 textA.position = "flex";
 scene.add(textA);
 
-var container = new Container();
+var container = new Container("容器一");
 container.setBound(50,50,300,350);
 container.add(nodeA);
 container.add(nodeB);
 scene.add(container);
 
-var c2 = new Container();
+var c2 = new Container("容器二");
 c2.setBound(300,100,200,300);
 c2.add(nodeC);
 c2.bgColor = "green";
