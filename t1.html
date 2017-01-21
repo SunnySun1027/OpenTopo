@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>T1</title>
     <script src="js/jquery-1.11.1.min.js"></script>
+    <script src="js/extended.js"></script>
     <script src="js/base.js"></script>
 </head>
 <body style="border:10px solid red;">
@@ -16,9 +17,12 @@ aaaaaaaaaaaaaaa
 <canvas id="canvas" width="1000px" height="600px" style="border:4px solid black;"></canvas>
 <script>
 
+
+
 function Stage(canvas){
     this.canvas = canvas;
-    this.context =canvas.getContext("2d");
+    this.ctx =canvas.getContext("2d");
+    //this.ctx.fontStyle = "微软雅黑"
     var me = this;
     this.curScene = null;
 
@@ -61,7 +65,7 @@ function Stage(canvas){
             }
         });
         if(me.curScene.currentElement){
-            me.canvas.style.cursor = "aa";
+            //me.canvas.style.cursor = "aa";
             var curEle = me.curScene.currentElement;
             if(curEle.onClick){
                 curEle.onClick({
@@ -76,11 +80,18 @@ function Stage(canvas){
 
         canvas.onmousemove = function(ev){
             ev = ev || event;
+
+            canvas.mousemoveEventObj = ev;
+
             //var px2 = (ev.clientX -canvas.offsetLeft - canvas.width / 2) / me.curScene.scaleX + canvas.width / 2 - me.curScene.translateX;
             //var py2 = (ev.clientY -canvas.offsetTop - canvas.height / 2) / me.curScene.scaleY + canvas.height / 2 - me.curScene.translateY;
             var px2 = (ev.clientX -canvas.offsetLeft+document.body.scrollLeft - canvas.width / 2) / me.curScene.scaleX + canvas.width / 2 - me.curScene.translateX;
             var py2 = (ev.clientY -canvas.offsetTop+document.body.scrollTop - canvas.height / 2) / me.curScene.scaleY + canvas.height / 2 - me.curScene.translateY;
             var curEle = me.curScene.currentElement;
+
+            canvas.px2 =px2;
+            canvas.py2 = py2;
+
 
             if(curEle){
                 var dx = px2-curEle.pointX;
@@ -138,7 +149,7 @@ function Stage(canvas){
         if(me.curScene){
           //  me.canvas.height = parseInt(me.canvas.style.height)/me.curScene.scaleX;
            // me.canvas.width = parseInt(me.canvas.style.width)/me.curScene.scaleY;
-            me.curScene.paint(me.context);
+            me.curScene.paint(me.ctx);
         }
         setTimeout(arguments.callee,10);
     }();
@@ -167,7 +178,7 @@ function Scene(stage){
                     case "container":
                         return 1;
                     case "link":
-                        return 2;
+                        return 0;
                     case "node":
                     case "text":
                         return 3;
@@ -186,6 +197,8 @@ function Scene(stage){
 
     this.paint = function(ctx){
         var canvas = this.stage.canvas;
+        var ctx = this.stage.ctx;
+
         this.childs.forEach(function(ele){
             if(ele.elementType == "container"){
                 ele.childs.forEach(function(node){
@@ -233,6 +246,7 @@ function Scene(stage){
                 ele.paint(ctx);
             }
         });
+       // ctx.dashedLineTo(10,20,200,200);
         ctx.restore();
 
     //    var img = new Image();
@@ -253,6 +267,8 @@ function Node(text){
     this.font = "10px 微软雅黑";
     this.borderWidth = 10;
     this.image = null;
+    this.tooltipText = null;//提示文本
+    this.tooltipAlway = false;//总是显示提示文本
     this.onClick = function(params){
         console.log(params);
 
@@ -292,11 +308,49 @@ function Node(text){
         }else{
             ctx.fillStyle = this.fillStyle;
             ctx.fillRect(0,0,this.width,this.height);
+
         }
         //画文本
         this.paintText(ctx);
+
+        if((this.scene.focus == this || this.tooltipAlway)&&this.tooltipText){
+            this.paintTooltip(ctx);
+        }
         ctx.restore();
     }
+
+    this.paintTooltip = function(ctx){
+        ctx.save();
+        ctx.fillStyle = "white"
+
+
+        ctx.strokeStyle = "white";
+        ctx.translate(this.width/2,0);
+
+        var textWidth = ctx.measureText(this.tooltipText).width;
+        var textHeight = ctx.measureText("田").width;
+        ctx.beginPath();
+        ctx.lineJoin = "round";
+       ctx.lineCap = "round"
+        ctx.moveTo(0,-1);
+        ctx.lineTo(-5,-5);
+        ctx.lineTo(-textWidth/2-10,-5);
+        ctx.lineTo(-textWidth/2-10,-5-textHeight-10);
+        ctx.lineTo(textWidth/2+10,-5-textHeight-10);
+        ctx.lineTo(textWidth/2+10,-5);
+        ctx.lineTo(2,-5);
+        ctx.lineTo(0,-1);
+        ctx.stroke();
+        ctx.closePath();
+       // ctx.fill();
+        ctx.fillStyle = "rgba(0,100,0,0.5)";
+        ctx.fill();
+        ctx.fillStyle = "red";
+        ctx.fillText(this.tooltipText,-textWidth/2,-11);
+
+        ctx.restore();
+    }
+
     this.paintBorder = function(ctx){
         var alp = 0;
         if(this.selected){
@@ -315,10 +369,12 @@ function Node(text){
             ctx.save();
             ctx.translate(this.width / 2, this.height + this.borderWidth / 2);
             ctx.fillStyle = this.fontStyle;
+
             ctx.textAlign = "center";
             ctx.font = this.font;
             ctx.textBaseline = "top";
             ctx.fillText(this.text, 0, 0);
+
             ctx.restore();
         }
     }
@@ -330,12 +386,25 @@ function Link(nodeA,nodeZ){
     this.nodeZ = nodeZ;
     this.stokeStyle = "red";
     this.textStyle = "blue";
-    this.lineWidth = 1;
+    this.lineWidth = 2;
     this.scene = null;
     this.text = null;
     this.arrowsRadius = 10;
+    this.dashedPattern = null;//虚线
+    this.fold = false;//折线
+    this.direction = null;//方向,vertical为垂直方向,其它为水平方向
+    this.vertical = false;
+    this.drawLine = function(dotXY, ops) {
+        this.ctx.lineWidth = 10;
+        this.ctx.beginPath();
+        for (var att in ops) this.ctx[att] = ops[att];
+        dotXY = dotXY.constructor == Object ? [dotXY || { x: 0, y: 0}] : dotXY;
+        this.ctx.moveTo(dotXY[0].x, dotXY[0].y);
+        for (var i = 1, len = dotXY.length; i < len; i++) this.ctx.lineTo(dotXY[i].x, dotXY[i].y);
+        this.ctx.stroke();
+    };
     this.paint = function(){
-        var ctx = this.scene.stage.context;
+        var ctx = this.scene.stage.ctx;
         var canvas = this.scene.stage.canvas;
         var sPort ={
             x:this.nodeA.x+this.nodeA.width/2,
@@ -346,31 +415,46 @@ function Link(nodeA,nodeZ){
             x:this.nodeZ.x+this.nodeZ.width/2,
             y:this.nodeZ.y+this.nodeZ.height/2
         }
+        var cPort = sPort;
 
+        if(this.fold){
+            if(this.direction && this.direction=="vertical"){
+                cPort = {
+                    x:dPort.x,
+                    y:sPort.y
+                }
+            }else{
+                cPort = {
+                    x:sPort.x,
+                    y:dPort.y
+                }
+            }
+
+        }
 
         if(this.arrowsRadius) {
-            var xju = dPort.x - sPort.x;
-            var yju = dPort.y - sPort.y;
-
+            var xju = dPort.x - cPort.x;
+            var yju = dPort.y - cPort.y;
 
             var westPoint = {//西边
                 x: this.nodeZ.x,
-                y: this.nodeA.y + this.nodeA.height / 2 + (yju / xju) * (xju - this.nodeZ.width / 2)
+                y: cPort.y+ (yju / xju) * (xju - this.nodeZ.width / 2)
             }
             var eastPoint = {//东边
                 x: this.nodeZ.x + this.nodeZ.width,
-                y: this.nodeA.y + this.nodeA.height / 2 + (yju / xju) * (xju + this.nodeZ.width / 2)
+                y: cPort.y + (yju / xju) * (xju + this.nodeZ.width / 2)
             }
 
             var northPoint = {//北边重叠
-                x: this.nodeA.x + this.nodeA.width / 2 + (xju / yju) * (yju - this.nodeZ.height / 2),
+                x: cPort.x + (xju / yju) * (yju - this.nodeZ.height / 2),
                 y: this.nodeZ.y,
             }
 
             var sourthPoint = {//南边
-                x: this.nodeA.x + this.nodeA.width / 2 + (xju / yju) * (yju + this.nodeZ.height / 2),
+                x: cPort.x + (xju / yju) * (yju + this.nodeZ.height / 2),
                 y: this.nodeZ.y + this.nodeZ.height
             }
+
 
             var pos = [westPoint, eastPoint, northPoint, sourthPoint];
             for (var i = 0; i < pos.length; i++) {
@@ -381,29 +465,46 @@ function Link(nodeA,nodeZ){
                     && point.y >= this.nodeZ.y
                     && point.y <= this.nodeZ.y + this.nodeZ.height
                 ) {
-                    if (Math.abs(dPort.x - this.nodeA.x) + Math.abs(dPort.y - this.nodeA.y) > Math.abs(point.x - this.nodeA.x) + Math.abs(point.y - this.nodeA.y)) {
+                    if (Math.abs(dPort.x - cPort.x) + Math.abs(dPort.y - cPort.y) > Math.abs(point.x - cPort.x) + Math.abs(point.y - cPort.y)) {
                         dPort = point;
                     }
                 }
             }
         }
 
+
+
         ctx.save();
         //画线
+
         ctx.beginPath();
         ctx.lineWidth = this.lineWidth;
-        ctx.moveTo(sPort.x,sPort.y);
-        ctx.lineTo(dPort.x,dPort.y);
         ctx.strokeStyle = this.stokeStyle;
+
+        ctx.moveTo(sPort.x,sPort.y);
+
+            if(this.fold){
+                ctx.dashedLineTo(sPort.x,sPort.y,cPort.x,cPort.y,this.dashedPattern);
+                sPort = {
+                    x:cPort.x,
+                    y:cPort.y
+                }
+            }
+            ctx.dashedLineTo(sPort.x,sPort.y,dPort.x,dPort.y,this.dashedPattern);
+
         ctx.stroke();
         ctx.closePath();
+/*        if(ctx.isPointInPath(0,0)){
+            alert();
+        }*/
 
         //画箭头
         if(this.arrowsRadius) {
             ctx.save();
+
             ctx.beginPath();
             ctx.strokeStyle = this.strokeStyle;
-            ctx.lineWidth = 3;
+            ctx.lineWidth = this.lineWidth;
             ctx.translate(dPort.x, dPort.y);
             ctx.rotate(Math.atan2(dPort.y - sPort.y, dPort.x - sPort.x));
             ctx.moveTo(-this.arrowsRadius, this.arrowsRadius / 2);
@@ -412,7 +513,9 @@ function Link(nodeA,nodeZ){
             ctx.stroke();
             ctx.closePath();
             ctx.restore();
+
         }
+
 
 
 
@@ -447,7 +550,7 @@ function TextNode(text){
         this.y = y;
     }
     this.paint = function(){
-        var ctx = this.scene.stage.context;
+        var ctx = this.scene.stage.ctx;
         var canvas = this.scene.stage.canvas;
 
         ctx.save();
@@ -511,12 +614,17 @@ var scene = new Scene(stage);
 var nodeA = new Node("nodeA");
 nodeA.setBound(300.0,300.0,30.0,30.0);
 nodeA.fillStyle = "blue";
+
+nodeA.tooltipText = "这是一个提示";
+
 scene.add(nodeA);
 
 var nodeB = new Node("nodeB");
 nodeB.fillStyle = "white";
 nodeB.setBound(100.0,100.0,30.0,30.0);
 scene.add(nodeB);
+
+
 
 var nodeC = new Node("nodeC");
 nodeC.fillStyle = "rgb(100,100,100)"
@@ -531,14 +639,22 @@ nodeD.setLocation(400,300);
 nodeD.setImage("fhq.png");
 scene.add(nodeD);
 
+nodeD.tooltipText = "哈哈哈!!!!!!";
+nodeD.tooltipAlway = true;
+
+
 var nodeE =new Node("nodeE");
 nodeE.setLocation(300,400);
 nodeE.setImage("jkj.png");
 scene.add(nodeE);
 
 
+
+
 var linkA = new Link(nodeA,nodeB);
 linkA.text = "linkA";
+linkA.fold = true;
+linkA.dashedPattern = 5;
 scene.add(linkA);
 
 
@@ -548,6 +664,7 @@ scene.add(linkB);
 
 var linkC = new Link(nodeC,nodeA);
 linkC.text = "linkC";
+linkC.dashedPattern = 5;
 scene.add(linkC);
 
 var textA = new TextNode("测试拓扑图");
@@ -559,13 +676,13 @@ var container = new Container("容器一");
 container.setBound(50,50,300,350);
 container.add(nodeA);
 container.add(nodeB);
-scene.add(container);
+//scene.add(container);
 
 var c2 = new Container("容器二");
 c2.setBound(600,100,200,300);
 c2.add(nodeC);
 c2.bgColor = "green";
-scene.add(c2);
+//scene.add(c2);
 
 var linkD = new Link(nodeE,nodeD);
 linkD.arrowsRadius = null;
