@@ -34,9 +34,9 @@ $(function () {
                 href:"download.html"
             },
             {
-                text: "论坛",
+                text: "博客",
                 flag: "bbs",
-                href: "http://bbs.appx.top",
+                href: "http://blog.appx.top",
                 target: "_blank"
             },
            {
