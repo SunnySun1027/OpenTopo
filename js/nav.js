@@ -53,7 +53,11 @@ $(function () {
         if (flag && menu.flag == flag) {
             li.addClass("active");
         }
-    })
+    });
+
+    var navRight =$("<div>").addClass("nav pull-right").appendTo(collapse);
+    var li = $("<li>").appendTo(navRight);
+    $('<div class="btn btn-group"><span><iframe class="github-btn" src="http://ghbtns.com/github-btn.html?user=zhangwenyan&repo=opentopo&type=watch&count=true" allowtransparency="true" frameborder="0" scrolling="0" width="80px" height="30px"></iframe></span><span><iframe class="github-btn" src="http://ghbtns.com/github-btn.html?user=zhangwenyan&repo=opentopo&type=fork&count=true" allowtransparency="true" frameborder="0" scrolling="0" width="80px" height="30px"></iframe></span></div>').appendTo(li);
 
 })();
 
