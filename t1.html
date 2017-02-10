@@ -372,6 +372,9 @@ function Node(text){
     };
     this.setImage = function(url){
         var img = new Image();
+        img.onload = function(){
+            img.loadSuccess = true;
+        }
         img.src = url;
         this.image = img;
     }
@@ -392,7 +395,7 @@ function Node(text){
         //画内容
 
         var image = null;
-        if(this.image){
+        if(this.image && this.image.loadSuccess){
             image = OT.util.getImageByFilter(this.image,this.imageFilterName,this.alpha);
         }
         if(image){
