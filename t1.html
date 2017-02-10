@@ -273,6 +273,11 @@ void function (OT){
     var canvas_temp =document.createElement("canvas");
     var ctx_temp =canvas_temp.getContext("2d");
     function getImageByFilter(image,filterName,alpha){
+        if(!image.width || !image.height){
+            //图片还没有加载完成
+            return null;
+        }
+
         var cacheName = image.src+filterName;
         if(window.imageCache[cacheName]){
             return window.imageCache[cacheName];
@@ -385,15 +390,18 @@ function Node(text){
         //画外框
         this.paintBorder(ctx);
         //画内容
-        if(this.image){
-            var image = OT.util.getImageByFilter(this.image,this.imageFilterName,this.alpha);
-            ctx.drawImage(image,0,0,this.width,this.height);
 
+        var image = null;
+        if(this.image){
+            image = OT.util.getImageByFilter(this.image,this.imageFilterName,this.alpha);
+        }
+        if(image){
+            ctx.drawImage(image,0,0,this.width,this.height);
         }else{
             ctx.fillStyle = this.fillStyle;
             ctx.fillRect(0,0,this.width,this.height);
-
         }
+
         //画文本
         this.paintText(ctx);
 
