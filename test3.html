@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script src="Class.js"></script>
+    <script src="Base.js"></script>
+    <script src="lib/jquery-3.2.1.min.js"></script>
+    <script src="opentopo2.0.js"></script>
+</head>
+<body>
+<script>
+
+    var GameLogic = Base.extend({
+        init:function(view,width,height){
+            this._super();
+            this.view = view;
+            //this.view.init();
+        },
+        start: function () {
+            if(!this.gameLoop){
+                var me = this;
+              //  me.view.start();
+                me.gameLoop = setInterval(function(){
+                    me.tick();
+                },100);
+            }
+        },
+        tick: function () {
+            console.log('tick');
+          //  this.view.refresh();
+
+        },
+        pause: function () {
+            if(this.gameLoop){
+                this.view.pause();
+                clearInterval(this.gameLoop);
+                this.gameLoop = undefined;
+            }
+        }
+    });
+
+    var Element = Base.extend({
+        init:function(ctx,x,y,width,height){
+            this.ctx = ctx;
+            this.x = x;
+            this.y = y;
+            this.width = width;
+            this.height = height;
+        },
+        draw:function(){
+            this.ctx.fillRect(this.x,this.y,this.width,this.height);
+        }
+    })
+
+    var GameDialog = Element.extend({
+        init:function(){
+            this._super.apply(this,arguments);
+            this.enable = false;
+        },
+        draw:function(){
+            if(!this.enable){
+                return;
+            }
+            this.ctx.beginPath();
+            this.ctx.strokeStyle = "rgba(100,100,100,0.8)";
+            this.ctx.lineWidth = 4;
+            this.ctx.rect(this.x+2,this.y+2,this.width-4,this.height-4);
+            this.ctx.stroke();
+            this.ctx.closePath();
+
+            this.ctx.fillStyle = "rgba(255,255,200,0.8)";
+            this.ctx.fillRect(this.x+4,this.y+4,this.width-8,this.height-8);
+
+            if(!this.img_no){
+                this.img_no = new Image();
+                this.img_no.src = "images/no.png";
+            }
+            this.ctx.fillStyle = "rgba(50,50,50,0.5)";
+            this.ctx.fillRect(this.x+4,this.y+4,this.width-8,40);
+            this.ctx.drawImage(this.img_no,this.x+this.width-44,this.y+10,30,30);
+            this.ctx.font = "15pt 华文彩云";
+            this.ctx.fillStyle = "rgba(0,0,0,1)";
+            this.ctx.fillText("公告",this.x+135,this.y+90);
+        }
+
+    });
+    var GameButton = Element.extend({
+        draw:function(){
+            this.ctx.beginPath();
+            this.ctx.strokeStyle = "rgba(255,255,200,0.8)";
+            this.ctx.lineWidth = 2;
+            this.ctx.rect(this.x+1,this.y+1,this.width-2,this.height-2);
+            this.ctx.stroke();
+            this.ctx.closePath();
+
+            this.ctx.fillStyle = "rgba(255,255,200,0.5)";
+            this.ctx.fillRect(this.x+2,this.y+2,this.width-4,this.height-4);
+            this.ctx.fillStyle = "rgba(255,255,200,0.2)";
+            this.ctx.fillRect(this.x+3,this.y+3,this.width-6,(this.height-6)/2);
+
+            if(!this.img){
+                this.img = new Image();
+                this.img.src = "images/large_chart.png";
+            }
+            this.ctx.drawImage(this.img,this.x+15,this.y+12,30,30);
+            this.ctx.fillStyle = "rgba(255,255,255,0.9)";
+            this.ctx.font = "5pt 黑体";
+            this.ctx.fillText("图表",this.x+16,this.y+52);
+            //var image = OT.util.getImageByFilter("/")
+            //this.ctx.drawImage()
+        }
+
+    });
+    var CanvasView = function(canvas){
+        this.canvas = canvas;
+        this.ctx = this.canvas.getContext("2d");
+        this.border = 5;
+        this.elements = [];
+        this.init = function(){
+
+        };
+        this.start = function(){
+            this.ctx.fillStyle = "black";
+            this.ctx.fillRect(0,0,this.canvas.width,this.canvas.height);
+
+            var width = 50;
+            var height = 50;
+            var x = this.canvas.width;
+            var gb = new GameButton(this.ctx,100,this.canvas.height-70,60,60);
+
+            var gd = new GameDialog(this.ctx,100,50,350,250);
+
+            this.elements.push(gb);
+            this.elements.push(gd);
+
+        };
+        this.refresh = function(){
+            this.ctx.clearRect(this.border,this.border,this.canvas.width-this.border*2,this.canvas.height-this.border*2);
+            this.ctx.fillStyle = "rgba(200,200,200,0.9)";
+            if(!this.bgImg){
+                this.bgImg = new Image();
+                this.bgImg.src = "images/bg.jpg";
+            }
+            this.ctx.drawImage(this.bgImg,this.border,this.border,this.canvas.width-this.border*2,this.canvas.height-this.border*2);
+            //this.ctx.fillRect(this.border,this.border,this.canvas.width-this.border*2,this.canvas.height-this.border*2);
+
+            for(var i=0;i<this.elements.length;i++){
+                var ele = this.elements[i];
+                ele.draw();
+            }
+
+        };
+        this.pause = function(){
+            console.log("gv pause");
+        }
+    };
+    $(function(){
+        var canvas = document.getElementById("canvas");
+        var view = new CanvasView(canvas);
+        var stage = new Stage(canvas);
+        var scene = new Scene(stage);
+        var logic = new GameLogic(scene,10,20);;
+        logic.start();
+    })
+
+</script>
+<canvas id="canvas" height="400" width="600"></canvas>
+
+</body>
+</html>

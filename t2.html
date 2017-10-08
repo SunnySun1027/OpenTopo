@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script src="opentopo2.0.js"></script>
+</head>
+<body>
+<div>
+    <button onclick="zoomIn()">放大</button>
+    <button onclick="zoomOut()">缩小</button>
+</div>
+<canvas id="canvas"></canvas>
+<script>
+
+    var canvas = document.getElementById("canvas");
+    var stage = new Stage(canvas,800,500);
+    var scene = new Scene(stage);
+    var node1 = new Node("节点一12121212",100,100);
+    var node2 = new Node("节点二",200,150);
+    var node3 = new Node("节点三",150,250);
+    node2.tooltipText = "我是气泡";
+    node1.setImage("images/fhq.png");
+    node2.setImage("images/cpzl.png");
+    node3.setImage("images/lyq.png");
+    var link1 = new Link(node1,node2);
+    var link2 = new Link(node2,node3);
+
+    var text1 = new TextNode("文本1田地",185,200);
+
+    scene.add(node1,node2,node3,link1,link2,text1);
+
+/*    document.body.onresize = function(){
+        stage.width = document.body.clientWidth;
+        stage.height = document.body.clientHeight;
+    };
+    document.body.onresize();*/
+
+function zoomIn(){
+    stage.curScene.scaleX /= 0.95;
+    stage.curScene.scaleY /= 0.95;
+}
+function zoomOut(){
+    stage.curScene.scaleX *= 0.95;
+    stage.curScene.scaleY *= 0.95;
+}
+
+</script>
+
+</body>
+</html>
