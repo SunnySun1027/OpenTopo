@@ -1,8 +1,8 @@
 var Link = Element.extend({
     elementType:"link",
     z_index:1,
-    strokeStyle:"yellow",
-    lineWidth:2,
+    strokeStyle:"yellow",//线条样式
+    lineWidth:2,//线宽
     init:function(sEle,dEle){
         this.sEle = sEle;
         this.dEle = dEle;
@@ -11,12 +11,10 @@ var Link = Element.extend({
         ctx.save();
         ctx.lineWidth = this.lineWidth;
         ctx.strokeStyle = this.strokeStyle;
-
         var spoint = {
             x:this.sEle.x+this.sEle.width/2,
             y:this.sEle.y +this.sEle.height/2
         };
-
         var dpoint = {
             x:this.dEle.x+this.dEle.width/2,
             y:this.dEle.y+this.dEle.height/2
@@ -32,12 +30,10 @@ var Link = Element.extend({
         ctx.save();
         ctx.lineWidth = this.lineWidth+2;
         ctx.strokeStyle = "rgba(200,200,200,0.4)";
-
         var spoint = {
             x:this.sEle.x+this.sEle.width/2,
             y:this.sEle.y +this.sEle.height/2
         };
-
         var dpoint = {
             x:this.dEle.x+this.dEle.width/2,
             y:this.dEle.y+this.dEle.height/2

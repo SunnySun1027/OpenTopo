@@ -54,7 +54,7 @@ var Stage = Base.extend({
             me.curScene.currentElement = null;
 
             me.curScene._elements.forEach(function(ele){
-                if(ele.elementType == "node" || ele.elementType=="container") {
+                //if(ele.elementType == "node" || ele.elementType=="container") {
                     if (ele.inBound(px, py)) {
                         ele.selected = true;
                         me.curScene.currentElement = ele;
@@ -65,7 +65,7 @@ var Stage = Base.extend({
                             ele.selected = false;
                         }
                     }
-                }
+                //}
             });
 
             if(me.curScene.currentElement){
@@ -101,8 +101,6 @@ var Stage = Base.extend({
 
                 me._canvas.mousemoveEventObj = ev;
 
-                //var px2 = (ev.clientX -canvas.offsetLeft - canvas.width / 2) / me.curScene.scaleX + canvas.width / 2 - me.curScene.translateX;
-                //var py2 = (ev.clientY -canvas.offsetTop - canvas.height / 2) / me.curScene.scaleY + canvas.height / 2 - me.curScene.translateY;
                 var px2 = (ev.clientX -me._canvas.offsetLeft+document.body.scrollLeft - me._canvas.width / 2) / me.curScene.scaleX + me._canvas.width / 2 - me.curScene.translateX;
                 var py2 = (ev.clientY -me._canvas.offsetTop+document.body.scrollTop - me._canvas.height / 2) / me.curScene.scaleY + me._canvas.height / 2 - me.curScene.translateY;
                 var curEle = me.curScene.currentElement;
@@ -138,8 +136,6 @@ var Stage = Base.extend({
                 console.log('def')
             }
 
-
-
         };
 
         document.onmousemove = function(ev){
@@ -149,11 +145,11 @@ var Stage = Base.extend({
             var py = (ev.clientY -me._canvas.offsetTop+document.body.scrollTop - me._canvas.height / 2) / me.curScene.scaleY + me._canvas.height / 2 - me.curScene.translateY;
 
             me.curScene._elements.forEach(function(ele){
-                if(ele.elementType == "node" || ele.elementType == "link"){
+                //if(ele.elementType == "node" || ele.elementType == "link"){
                     if(ele.inBound(px,py)){
                         me.curScene.focus = ele;
                     }
-                }
+                //}
 
             });
         }
@@ -169,8 +165,7 @@ var Stage = Base.extend({
             var now = new Date();
             var fps = parseInt(1000/(now-this.lastTime));
             this.lastTime = now;
-            this._ctx.fillText("FPS:"+fps,10,20);
-
+            this.curScene.text = "FPS:"+fps;
         }
     }
 });

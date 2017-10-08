@@ -1,12 +1,12 @@
 var Scene = Base.extend({
-    fillStyle:"green",
-//    _elements:[],
+    fillStyle:"green",//背景
     scaleX:1,//横向缩放角度
-    scaleY:1,
-    translateX:0,
-    translateY:0,
-    wheelZoom:0.95,
-    dragEnable:true,
+    scaleY:1,//纵向缩放角度
+    translateX:0,//横向偏移
+    translateY:0,//纵向偏移
+    wheelZoom:0.95,//鼠标缩放速度
+    dragEnable:true,//鼠标是否可以拖拽更改偏移量
+    text:null,
     init:function(stage){
         if(stage){
             stage.curScene = this;
@@ -25,6 +25,16 @@ var Scene = Base.extend({
         ctx.fillRect(0,0,canvas.width,canvas.height);
         ctx.restore();
         //#endregion
+
+
+        if(this.text) {
+            ctx.save();
+            ctx.textBaseline = "top";
+            ctx.font = "15px Arial";
+            ctx.fillText(this.text, 10, 10);
+            ctx.restore();
+        }
+
 
         //位移
         ctx.translate(this.translateX,this.translateY);
@@ -61,15 +71,13 @@ var Scene = Base.extend({
     //ele...
     add:function(){
         for(var i in arguments){
-            if(arguments[i].elementType=="link"){
-                this._elements.push(arguments[i]);
-            }
+           this._elements.push(arguments[i]);
         }
-        for(var i in arguments){
-            if(arguments[i].elementType=="node"){
-                this._elements.push(arguments[i]);
-            }
-        }
+
+        this._elements.sort(function(a,b){
+            return a.z_index-b.z_index;
+        })
+
 
     }
 

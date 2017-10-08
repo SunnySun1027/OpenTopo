@@ -1,5 +1,6 @@
 var Element = Base.extend({
     visible:true,
+    dragEnable:true,//是否可以拖拽
     paintTooltip:function(ctx){
 
     },

@@ -1,16 +1,19 @@
 var Node = Element.extend({
     elementType:"node",
+    z_index:2,
     x:0,
     y:0,
-    width:30,
-    height:30,
-    fillStyle:"blue",
-    image:null,
+    width:50,
+    height:50,
+    fillStyle:"blue",//颜色,image作用时不生效
+    image:null,//填空图片
     imageFilterName:"normal",//inverse:反色;gray:灰色;mirror:镜像
     alpha:255,
-    tooltipAlway:false,
-    fillStyle_tooltip:"red",
-    dragEnable:true,
+    tooltipAlway:false,//是否始终显示气泡
+    fillStyle_tooltip:"red",//气泡字体样式
+
+    fillStyle_text:"black",//文本样式
+    font_text:"15px Arial",//字体
     init:function(text,x,y){
         this.text = text;
         if(x!==undefined){
@@ -33,9 +36,9 @@ var Node = Element.extend({
 
         if(this.text){
             ctx.save();
-            ctx.fillStyle = this.fontStyle;
+            ctx.fillStyle = this.fillStyle_text;
             ctx.textAlign = "center";
-            ctx.font = this.font;
+            ctx.font = this.font_text;
             ctx.textBaseline = "top";
             ctx.fillText(this.text, this.x+this.width/2, this.y+this.height);
             ctx.restore();
@@ -66,10 +69,8 @@ var Node = Element.extend({
         // ctx.fill();
         ctx.fillStyle = this.fillStyle_tooltip;
         ctx.fillText(this.tooltipText,-textWidth/2,-11);
-
         ctx.restore();
     },
-
     paintFocus:function(ctx){
         ctx.save();
         ctx.fillStyle = "rgba(255,255,255,0.2)";
